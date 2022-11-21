@@ -1,0 +1,405 @@
+#!/bin/bash
+
+while getopts ":m:p:o:" opt; do
+  case $opt in
+    m) mode="$OPTARG"
+    ;;
+    p) param="$OPTARG"
+    ;;
+    o) option+=("$OPTARG")
+    ;;
+  esac
+done
+
+
+## Help display of function
+if [ "$1" == "-h" ]; then
+    ##cat `dirname $0`/README.txt
+
+echo "Usage: `basename $0` [-h] [-m mode] [-p parameter_file.txt] [-o additional options]
+                        __
+                      /======/  \\
+              ___    //      \___C     CCACAA
+       CCA   | \\\  //              AGCCCACAAATT
+     |ACCTC__|__|_//              CGAGCCCACAAATTAC
+    _L_____________\o           ATCGAGCCCACAAATTACAC
+___(OOOOOOOOOOOOOO)_______CATTATCGAGCCCACAAATTACACAA___
+
+REFMAKER: de novo building reference catalog for mapping
+           where:
+            -m (mode) perform pipeline according to the chosen mode [demultiplexing,assembly,filtering,mapping,calling,consensus]
+            -p (parameter_file) set the parameter file
+            -o (options) get some options according to the used mode [samples,catalog,consensus]
+            "
+  exit 0
+fi
+
+source $param
+source `dirname $0`/tools.sh
+
+set -e
+
+## refmaker process
+
+echo ""
+echo "refmaker-v.1.0"
+echo "start processing"
+echo "                        __
+                      /======/  \\
+              ___    //      \___C     CCACAA
+       CCA   | \\\  //              AGCCCACAAATT
+     |ACCTC__|__|_//              CGAGCCCACAAATTAC
+    _L_____________\o           ATCGAGCCCACAAATTACAC
+___(OOOOOOOOOOOOOO)_______CATTATCGAGCCCACAAATTACACAA___
+
+
+"
+mkdir -p ${RES}/assembly/samples
+
+if [ $mode == 'demultiplexing' ]; then
+  start=$(date +%s)
+  echo "[INFO]: demultiplexing of sequencing reads"
+  echo "[CMD]:"
+  mkdir -p ${DATA}/clean/
+  mkdir -p ${DATA}/unclean/
+  mkdir -p ${DATA}/tmp/
+  #demultiplexing step
+  for b in ${DATA}/*.barcodes;
+  do
+    libname=`basename ${b} | awk 'split($1,a,".") {print a[1]}'`
+    awk '{print ">"$1,"^"$2}' ${b} | tr " " "\n" > ${DATA}/tmp_barcodes_$libname.fa
+    reads_R1=${DATA}/$libname"_R1.fastq.gz"
+    reads_R2=${DATA}/$libname"_R2.fastq.gz"
+    ${CUTADAPT} -j ${THREADS} -e ${ERROR_RATE} -q ${READ_QUALITY} -g file:${DATA}/tmp_barcodes_${libname}.fa --no-indels --discard-untrimmed -o ${DATA}/unclean/${libname}.1.fastq.gz -p ${DATA}/unclean/${libname}.2.fastq.gz ${reads_R1} ${reads_R2}
+    rm ${DATA}/tmp_barcodes_${libname}.fa
+  done
+  for f in ${DATA}/unclean/*.1.fastq.gz;
+  do
+    samplename=`basename ${f} | awk 'split($1,a,".1.fastq.gz") {print a[1]}'`
+    ${CUTADAPT} -j ${THREADS} -a "AGATCGGAAGAGC;anywhere" -A "AGATCGGAAGAGC;anywhere" -U ${BARCODE_LENGTH} -q ${READ_QUALITY} -m ${MIN_READ_LENGTH} -o ${DATA}/tmp/${samplename}.1.fastq.gz -p ${DATA}/tmp/${samplename}.2.fastq.gz ${f} ${DATA}/unclean/${samplename}.2.fastq.gz
+  done
+  echo "[INFO]: done"
+  #cleaning step
+  echo "[INFO]: cleaning illumina adapters and read quality"
+  for f in ${DATA}/tmp/*.1.fastq.gz;
+  do
+    samplename=`basename ${f} | awk 'split($1,a,".1.fastq.gz") {print a[1]}'`
+    echo "[INFO]:" $f
+    zcat ${f} | ${SEQKIT} rmdup -n -o ${DATA}/clean/${samplename}.1.fastq.gz
+    echo "[INFO]:" ${DATA}/tmp/${samplename}.2.fastq.gz
+    zcat ${DATA}/tmp/${samplename}.2.fastq.gz | ${SEQKIT} rmdup -n -o ${DATA}/clean/${samplename}.2.fastq.gz
+    echo -e $samplename'\t'${DATA}/clean/${samplename}.1.fastq.gz'\t'${DATA}/clean/${samplename}.2.fastq.gz >> ${SAMPLES_FILE}
+  done
+  #statistics step
+  echo "[INFO]: done"
+  echo "[INFO]: computing summary statistics over read trimming"
+  mkdir -p ${DATA}/statistics/
+  for f in ${DATA}/clean/*.fastq.gz;
+  do
+    ${FASTQC} $f
+  done
+  mv ${DATA}/clean/*_fastqc.html ${DATA}/statistics/
+  rm ${DATA}/clean/*_fastqc.zip
+  echo "[INFO]: done"
+  end=`date +%s`
+  runtime=$( echo "$end - $start" | bc -l )
+  hours=$((runtime / 3600))
+  minutes=$(( (runtime % 3600) / 60 ))
+  seconds=$(( (runtime % 3600) % 60 ))
+  echo "[INFO]: time ellapsed for $mode step: $hours:$minutes:$seconds (hh:mm:ss)"
+  echo "[STATUS]: done"
+  echo ""
+  exit 0
+
+
+
+
+elif [ $mode == 'assembly' ] && [ $option == 'samples' ]; then
+  echo "[INFO]: spades assembly run"
+  mkdir -p ${RES}/assembly/spades
+  mkdir -p ${RES}/assembly/samples/
+  start=$(date +%s)
+  while read f;
+  do
+    samplename=`echo ${f} | awk '{print $1}'`
+    r1=`echo ${f} | awk '{print $2}'`
+    r2=`echo ${f} | awk '{print $3}'`
+    #outp=`echo ${f} | awk '{print $6}'`
+    # if assembly_done existed
+    if [ -s ${RES}/assembly_done.log ]; then
+      # we checked if sample already in done.log to continue to another sample
+      if grep -Fxq "${samplename}" ${RES}/assembly_done.log; then
+        echo "WARN: $samplename already processed"
+        continue
+      else
+        echo "${SPADES} -1 ${r1} -2 ${r2} --cov-cutoff auto -o ${RES}/assembly/spades/${samplename} -t ${THREADS} -m ${MEMORY} -k ${KMER}"
+        # we check if no error on function run
+        if ${SPADES} -1 ${r1} -2 ${r2} --cov-cutoff auto -o ${RES}/assembly/spades/${samplename} -t ${THREADS} -m ${MEMORY} -k ${KMER}; then
+          cat ${RES}/assembly/spades/${samplename}/scaffolds.fasta | awk -v NAME=${samplename} '{if ($0 ~ /^>/) {split($1,a,">"); $0=">"NAME"_"a[2]; print $0} else {print}}' > ${RES}/assembly/samples/${samplename}.fa
+          echo $samplename >> ${RES}/assembly_done.log
+        else
+          echo $samplename >> ${RES}/assembly_error.log
+        fi
+      fi
+    else
+      echo "${SPADES} -1 ${r1} -2 ${r2} --cov-cutoff auto -o ${RES}/assembly/spades/${samplename} -t ${THREADS} -m ${MEMORY} -k ${KMER}"
+      if ${SPADES} -1 ${r1} -2 ${r2} --cov-cutoff auto -o ${RES}/assembly/spades/${samplename} -t ${THREADS} -m ${MEMORY} -k ${KMER}; then
+        cat ${RES}/assembly/spades/${samplename}/scaffolds.fasta | awk -v NAME=${samplename} '{if ($0 ~ /^>/) {split($1,a,">"); $0=">"NAME"_"a[2]; print $0} else {print}}' > ${RES}/assembly/samples/${samplename}.fa
+        echo ${samplename} >> ${RES}/assembly_done.log
+      else
+        echo ${samplename} >> ${RES}/assembly_error.log
+      fi
+    fi
+  done <${SAMPLES_FILE}
+  end=`date +%s`
+  runtime=$( echo "$end - $start" | bc -l )
+  hours=$((runtime / 3600))
+  minutes=$(( (runtime % 3600) / 60 ))
+  seconds=$(( (runtime % 3600) % 60 ))
+  echo "[INFO]: time ellapsed for $mode step: $hours:$minutes:$seconds (hh:mm:ss)"
+  echo "[STATUS]: done"
+  echo ""
+  exit 0
+
+elif [ $mode == 'assembly' ] && [ $option == 'catalog' ]; then
+  echo "[INFO]: catalog building mode"
+  mkdir -p ${RES}/metassembly/
+  start=$(date +%s)
+  while read f;
+  do
+    samplename=`echo ${f} | awk '{print $1}'`
+    cat ${RES}/assembly/samples/${samplename}.fa | awk -v NAME=${samplename} '{if ($0 ~ /^>/) {split($1,a,">"); $0=">"NAME"_"a[2]; print $0} else {print}}' >> ${RES}/metassembly/tmp.contigs.fa
+  done<${SAMPLES_FILE}
+
+  for kval in ${KMER_ARRAY[@]};
+  do
+    ${SPADES} --careful --only-assembler -t ${THREADS} -m 120 -k $kval -o ${RES}/metassembly/metassembly_k$kval -s ${RES}/metassembly/tmp.contigs.fa
+  done
+  end=`date +%s`
+  runtime=$( echo "$end - $start" | bc -l )
+  hours=$((runtime / 3600))
+  minutes=$(( (runtime % 3600) / 60 ))
+  seconds=$(( (runtime % 3600) % 60 ))
+  echo "INFO: time ellapsed for $mode step: $hours:$minutes:$seconds (hh:mm:ss)"
+  echo "STATUS: done"
+  echo ""
+  exit 0
+
+elif [ $mode == 'filtering' ] && [ $option == 'catalog' ]; then
+  echo "[INFO]: catalog cleaning mode"
+  echo "[INFO]: step 1. cdhit clustering"
+  start=$(date +%s)
+  mkdir ${RES}/catalog/
+  for kval in ${KMER_ARRAY[@]};
+  do
+    ${CDHIT} -i ${RES}/metassembly/metassembly_k$kval/contigs.fasta -o ${RES}/catalog/cdhit_k$kval -c ${CD_CLUST} -n 10 -d 0 -M 16000 -T ${THREADS}
+    cat ${RES}/catalog/cdhit_k$kval | awk -v MLEN=${CD_LEN} '{if ($1 ~ /^>/) {split($1,a,"_")}{ if (a[4]>=MLEN) {print}}}' > ${RES}/catalog/unclean_catalog_k$kval.fa
+  done
+  rm ${RES}/catalog/cdhit_*
+  echo "[INFO]: done"
+  echo ""
+  echo "[INFO]: step 2. filtering of metacontigs"
+  DBPATH=`dirname $0`/resources
+  for seq in ${DBPATH}/rRNA_database/*.fasta;
+  do
+    ${BLASTDB} -in $seq -dbtype nucl
+  done
+  for kval in ${KMER_ARRAY[@]};
+  do
+     file=${RES}/catalog/unclean_catalog_k$kval.fa
+     for seq in ${DBPATH}/rRNA_database/*.fasta;
+     do
+       ${BLASTN} -db $seq -query $file -evalue ${EVALUE} -num_threads ${THREADS} -outfmt 7 -task blastn -best_hit_overhang 0.1 -max_target_seqs 1 -best_hit_score_edge 0.1 | awk -v SIM=${BLAST_SIM} -v LEN=${BLAST_LEN} '!/^#/ {if ($3>=SIM && $4>=LEN) print}' >> ${RES}/catalog/blast_unclean_k$kval.out
+     done
+     `dirname $0`/src/FiltContigs.py --blast ${RES}/catalog/blast_unclean_k$kval.out --rank ${EXPECTED_TAXO_RANK} --database ${DBPATH} --taxo ${DBPATH}/rRNA_database_taxonomy.txt --outpath ${RES}/catalog/ > ${RES}/catalog/bad_unclean_k$kval.log
+     if [ -s ${RES}/catalog/cpdna_contigs.infos ]; then
+        mv ${RES}/catalog/cpdna_contigs.infos ${RES}/catalog/cpdna_contigs_k$kval.infos
+        cat ${RES}/catalog/cpdna_contigs_k$kval.infos >> ${RES}/catalog/toremove_k$kval.log
+        cat ${RES}/catalog/cpdna_contigs_k$kval.infos >> ${RES}/catalog/metacontigs_cpdna.infos
+        rm ${RES}/catalog/cpdna_contigs_k$kval.infos
+    else
+      :
+    fi
+    if [ -s ${RES}/catalog/mtdna_contigs.infos ]; then
+      mv ${RES}/catalog/mtdna_contigs.infos ${RES}/catalog/mtdna_contigs_k$kval.infos
+      cat ${RES}/catalog/mtdna_contigs_k$kval.infos >> ${RES}/catalog/toremove_k$kval.log
+      cat ${RES}/catalog/mtdna_contigs_k$kval.infos >> ${RES}/catalog/metacontigs_mtdna.infos
+      rm ${RES}/catalog/mtdna_contigs_k$kval.infos
+    else
+      :
+    fi
+    if [ -s ${RES}/catalog/rdna_contigs.infos ]; then
+      mv ${RES}/catalog/rdna_contigs.infos ${RES}/catalog/rdna_contigs_k$kval.infos
+      cat ${RES}/catalog/rdna_contigs_k$kval.infos >> ${RES}/catalog/toremove_k$kval.log
+      cat ${RES}/catalog/rdna_contigs_k$kval.infos >> ${RES}/catalog/metacontigs_rdna.infos
+      rm ${RES}/catalog/rdna_contigs_k$kval.infos
+    else
+      :
+    fi
+    awk '/^>/ {printf("%s%s\t",(N>0?"\n":""),$0);N++;next;} {printf("%s",$0);} END {printf("\n");}' ${RES}/catalog/unclean_catalog_k$kval.fa | perl -pe 's@>@@' | awk ' NR==FNR {a[$1]=$1;next} {if($1 in a == 0) {print ">"$1"\n"$NF}}' ${RES}/catalog/toremove_k$kval.log - > ${RES}/catalog/tmp_clean_catalog_k$kval.fa
+  done
+  rm ${RES}/catalog/toremove_*
+  rm ${RES}/catalog/bad_*
+  echo "[INFO]: done"
+  echo ""
+  echo "[INFO]: step 3. final clustering"
+  for kval in ${KMER_ARRAY[@]};
+  do
+     cat ${RES}/catalog/tmp_clean_catalog_k$kval.fa | awk -v NAME="k"${kval} '{if ($0 ~ /^>/) {split($1,a,">"); $0=">"a[2]"_"NAME; print $0} else {print}}'>> ${RES}/catalog/all_clean_metassemblies.fa
+  done
+  file=${RES}/catalog/all_clean_metassemblies.fa
+  ${BLASTDB} -in $file -dbtype nucl
+  ${BLASTN} -db $file -query $file -evalue ${EVALUE} -num_threads ${THREADS} -outfmt 7 -task blastn >> ${RES}/catalog/blast_refall_refall_cleaned.out
+  `dirname $0`/src/FiltMeta.py -b ${RES}/catalog/blast_refall_refall_cleaned.out -i ${file} -o ${RES}/catalog/ -l ${META_OVERLAP} -s ${META_CLUST}
+  mv ${RES}/catalog/selected_clean_metassemblies.fa ${RES}/catalog/clean_catalog.fa
+  #rm ${RES}/catalog/blast_refall_refall_cleaned.out
+  #rm ${RES}/catalog/all_clean_metassemblies.fa
+  end=`date +%s`
+  runtime=$( echo "$end - $start" | bc -l )
+  hours=$((runtime / 3600))
+  minutes=$(( (runtime % 3600) / 60 ))
+  seconds=$(( (runtime % 3600) % 60 ))
+  echo "[INFO]: done"
+  echo "INFO: time ellapsed for $mode step: $hours:$minutes:$seconds (hh:mm:ss)"
+  echo "STATUS: done"
+  echo ""
+  exit 0
+
+elif [ $mode == 'mapping' ]; then
+  echo "[INFO]: mapping mode"
+  start=$(date +%s)
+  REF=${RES}/catalog/clean_catalog.fa
+  ${SAMTOOLS} faidx ${REF}
+  ${BWA} index ${REF}
+  ${PICARD} CreateSequenceDictionary -R ${REF} -O ${RES}/catalog/clean_catalog.dict
+  mkdir -p ${RES}/mapping/covs
+  while read f;
+  do
+    sample=`echo ${f} | awk '{print $1}'`
+    r1=`echo ${f} | awk '{print $2}'`
+    r2=`echo ${f} | awk '{print $3}'`
+    ${BWA} mem -t ${THREADS} -M -S ${REF} ${r1} ${r2} > ${RES}/mapping/${sample}_on_ref.sam
+    ${SAMTOOLS} sort ${RES}/mapping/${sample}_on_ref.sam -o ${RES}/mapping/temp_1_sorted.bam
+    ${SAMTOOLS} view -bF 4 -q ${MAPPING_QUAL} ${RES}/mapping/temp_1_sorted.bam > ${RES}/mapping/temp_1_sorted_keep.bam
+    ${PICARD} AddOrReplaceReadGroups -I ${RES}/mapping/temp_1_sorted_keep.bam -O ${RES}/mapping/temp_1_sorted_keep_rg.bam -ID ${sample} -LB id -PL pl -PU pu -SM ${sample}
+    ${PICARD} MarkDuplicates -I ${RES}/mapping/temp_1_sorted_keep_rg.bam -O ${RES}/mapping/temp_1_sorted_keep_pcrdup.bam -M ${RES}/mapping/marks --REMOVE_DUPLICATES true
+    cp ${RES}/mapping/temp_1_sorted_keep_pcrdup.bam ${RES}/mapping/${sample}_sorted_keep_pcrdup.rescaled.bam
+    ${SAMTOOLS} coverage -q ${MAPPING_QUAL} -H -o ${RES}/mapping/covs/${sample}_cov.infos ${RES}/mapping/${sample}_sorted_keep_pcrdup.rescaled.bam
+    rm ${RES}/mapping/temp*
+    rm ${RES}/mapping/marks
+  done<${SAMPLES_FILE}
+  end=`date +%s`
+  runtime=$( echo "$end - $start" | bc -l )
+  hours=$((runtime / 3600))
+  minutes=$(( (runtime % 3600) / 60 ))
+  seconds=$(( (runtime % 3600) % 60 ))
+  echo "[INFO]: done"
+  echo "INFO: time ellapsed for $mode step: $hours:$minutes:$seconds (hh:mm:ss)"
+  echo "STATUS: done"
+  echo ""
+  exit 0
+
+elif [ $mode == 'calling' ]; then
+  echo "[INFO]: calling mode"
+  start=$(date +%s)
+  echo "[INFO]: step 1. individual calling"
+  mkdir -p ${RES}/calling/filtered
+  REF=${RES}/catalog/clean_catalog.fa
+  for f in `ls ${RES}/mapping/*rescaled.bam`;
+  do
+    lib=`basename $f | perl -pe "s/\_sorted_keep_pcrdup.rescaled.bam//g"`
+    ${BCFTOOLS} mpileup -Ou -f ${REF} ${f} | ${BCFTOOLS} call -m -o ${RES}/calling/tmp_${lib}.bcf
+    ${BCFTOOLS} index ${RES}/calling/tmp_${lib}.bcf
+    ${BCFTOOLS} norm -f ${REF} ${RES}/calling/tmp_${lib}.bcf -o ${RES}/calling/${lib}.bcf
+    rm ${RES}/calling/tmp_${lib}.bcf*
+    echo $lib": calling done"
+  done
+  echo "[INFO]: done"
+  echo ""
+  echo "[INFO]: step 2. filtering of variants"
+  for f in `ls ${RES}/calling/*.bcf`;
+  do
+    lib=`basename $f | perl -pe "s/\.bcf//g"`
+    ${BCFTOOLS} filter -e "AC>0 & (DP4[2]+DP4[3])<${DP}" --SnpGap 10 ${f} | perl -pe "s/PASS/./g" | ${BCFTOOLS} view -V indels -O z -o ${RES}/calling/filtered/${lib}.bcf -
+    ${BCFTOOLS} index ${RES}/calling/filtered/${lib}.bcf
+    echo ${lib}": filtering done"
+  done
+  echo "[INFO]: done"
+  echo ""
+  echo "[INFO]: step 3. merging"
+  samples=""
+  for f in `ls ${RES}/calling/filtered/*.bcf`;
+  do
+    samples=$samples" "${f}
+  done
+  ${BCFTOOLS} merge -m all ${samples} -o ${RES}/calling/merge_unfiltered.bcf
+  ${BCFTOOLS} view -V indels -O z -o ${RES}/calling/merge_filtered.bcf ${RES}/calling/merge_unfiltered.bcf
+  ${BCFTOOLS} view ${RES}/calling/merge_filtered.bcf -v snps -Ov -o ${RES}/calling/merge_filtered_snps.vcf
+  echo "[INFO]: done"
+  echo ""
+  end=`date +%s`
+  runtime=$( echo "$end - $start" | bc -l )
+  hours=$((runtime / 3600))
+  minutes=$(( (runtime % 3600) / 60 ))
+  seconds=$(( (runtime % 3600) % 60 ))
+  echo "INFO: time ellapsed for $mode step: $hours:$minutes:$seconds (hh:mm:ss)"
+  echo "STATUS: done"
+  echo ""
+  exit 0
+
+elif [ $mode == 'consensus' ]; then
+  echo "[INFO]: consensus mode"
+  start=$(date +%s)
+  echo "[INFO]: step 1. consensus"
+  mkdir ${RES}/consense
+  REF=${RES}/catalog/clean_catalog.fa
+  ${BCFTOOLS} convert ${RES}/calling/merge_filtered_snp.vcf -Obz -o ${RES}/calling/merge_filtered_snp.bcf --threads ${THREADS}
+  ${BCFTOOLS} index ${RES}/calling/merge_filtered.bcf
+  for taxa in `${BCFTOOLS} query -l ${RES}/calling/merge_filtered.bcf`;
+  do
+    lib=$taxa
+    ${BCFTOOLS} consensus -f ${REF} -a N -s ${taxa} -H I -I ${RES}/calling/merge_filtered.bcf > ${RES}/consense/${lib}.fa
+    echo $lib": consensus done"
+  done
+  echo "[INFO]: done"
+  echo ""
+  echo "[INFO]: step 2. trimming"
+  `dirname $0`/src/consparser1.py -f ${RES}/consense/ -o ${RES}/outfiles -c ${REF} -m ${MIN_SEQ}
+  mkdir -p ${RES}/trimming
+  for f in `find ${RES}/outfiles -type f -name \*.fa`;
+  do
+    condnum=$(grep -c ">" $f)
+    if [[ $condnum -gt 1 ]]; then
+      ${TRIMAL} -in $f -${TRIMMODE} -out ${RES}/trimming/$(basename $f)
+    else
+      echo "WARN: only 1 sequence found in $f"
+    fi
+  done
+  echo "[INFO]: done"
+  echo ""
+  end=`date +%s`
+  runtime=$( echo "$end - $start" | bc -l )
+  hours=$((runtime / 3600))
+  minutes=$(( (runtime % 3600) / 60 ))
+  seconds=$(( (runtime % 3600) % 60 ))
+  echo "INFO: time ellapsed for $mode step: $hours:$minutes:$seconds (hh:mm:ss)"
+  echo "STATUS: done"
+  echo ""
+  exit 0
+
+elif [ $mode == 'filtering' ] && [ $option == 'consensus' ]; then
+  echo "[INFO]: consensus filtering"
+  start=$(date +%s)
+  `dirname $0`src/consfilter1.py -d ${RES}/mapping/covs/ --df ${MAX_SAMP_EXCESS_DEPTH_FREQ} -f ${RES}/trimming/ --ht ${MAX_HETERO_BASES_FREQ} --Ht ${MAX_HETERO_SAMP_FREQ} -l ${MIN_LOCUS_LEN} -M ${MAX_MISSING_SAMPLE_FREQ} -m ${MAX_MISSING_LOCUS_FREQ} -m_out ${MAX_MISSING_LOCUS_FREQ_OUTGROUP} -M_out ${MAX_MISSING_SAMPLE_FREQ_OUTGROUP} -o ${RES}/output -p ${POPULATION_FILE} --remove loci -r ${MIN_SAMP_FREQ_LOCUS_WITHIN_POP} -R ${MIN_SAMP_FREQ_LOCUS_BETWEEN_POP} --window_size ${WINDOW_SIZE} --window_psites ${WINDOW_PSITE}
+  `dirname $0`src/GeneStat.py -i ${RES}/output -o ${RES}/output
+  echo "[INFO]: done"
+  echo ""
+  end=`date +%s`
+  runtime=$( echo "$end - $start" | bc -l )
+  hours=$((runtime / 3600))
+  minutes=$(( (runtime % 3600) / 60 ))
+  seconds=$(( (runtime % 3600) % 60 ))
+  echo "INFO: time ellapsed for $mode step: $hours:$minutes:$seconds (hh:mm:ss)"
+  echo "STATUS: done"
+  echo ""
+  exit 0

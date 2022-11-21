@@ -1,0 +1,44 @@
+#REFMAKER (v.1.0) parameter file
+#------ global parameters ------------------------------------------------------
+TOOLS=~/REFMAKER-master/tools.sh                                                ## [1] path to file with dependencies
+RES=~/res_refmaker                                                              ## [2] output directory
+THREADS=15                                                                      ## [3] number of threads to use for multithreading steps
+#------ demultiplexing ---------------------------------------------------------
+DATA=~/path/to/libraries/                                                       ## [4] path to sequencing reads libraries including barcode(s) file(s): *.barcodes
+ERROR_RATE=0.17                                                                 ## [5] maximum allowed error rate as value between 0 and 1
+READ_QUALITY=10                                                                 ## [6] Trim low-quality bases. If one value is given, only the 3' end is trimmed. If two comma-separated cutoffs are given, the 5' end is trimmed with the first cutoff, the 3' end with the second
+MIN_READ_LENGTH=50                                                              ## [7] Discard reads shorter than this length.
+BARCODE_LENGTH=6                                                                ## [8] Remove LENGTH bases from second read in a pair
+#------ assembly samples -------------------------------------------------------
+MEMORY=120                                                                      ## [9] maximal memory used in assembly
+KMER=55                                                                         ## [10] k-mer size used in contigs assembly of each library. Single (here 55) or range values (as 21,33,55) allowed. Note: less than 128
+SAMPLES_FILE=samples.txt                                                        ## [11] samples file. Specific format required:  (1) sample name with Genus_species_(subsp)_taxid_attributes; (2) path to forward reads; (3) path to reverse reads;
+#------ catalog modes ----------------------------------------------------------
+KMER_ARRAY=("31" "51" "71" "91")                                                ## [12] k-mer array sizes used for the catalog assembly. We recommend using different k-mer sizes for this step as a clustering is next done
+CD_CLUST=0.8                                                                    ## [13] 
+CD_LEN=250                                                                      ## [14]
+BLAST_SIM=65                                                                    ## [15]
+BLAST_LEN=100                                                                   ## [16]
+EVALUE=0.001                                                                    ## [17]
+EXPECTED_TAXO_RANK=Embryophyta                                                  ## [18]
+META_CLUST=0.8                                                                  ## [19]
+META_OVERLAP=0.25                                                               ## [20]
+#------ mapping and calling modes ----------------------------------------------
+MAPPING_QUAL=60                                                                 ## [21]
+DP=4                                                                            ## [22]
+#------ consensus modes --------------------------------------------------------
+MIN_SEQ=5                                                                       ## [23]
+TRIMMODE=gappyout                                                               ## [24]
+MAX_SAMP_EXCESS_DEPTH_FREQ=0.5                                                  ## [25]
+MAX_HETERO_BASES_FREQ=0.05                                                      ## [26]
+MAX_HETERO_SAMP_FREQ=1.0                                                        ## [27]
+MIN_LOCUS_LEN=200                                                               ## [28]
+MAX_MISSING_LOCUS_FREQ=0.40                                                     ## [29]
+MAX_MISSING_SAMPLE_FREQ=0.80                                                    ## [30]
+MAX_MISSING_LOCUS_FREQ_OUTGROUP=0.80                                            ## [31]
+MAX_MISSING_SAMPLE_FREQ_OUTGROUP=0.90                                           ## [32]
+POPULATION_FILE=population.txt                                                  ## [33]
+MIN_SAMP_FREQ_LOCUS_WITHIN_POP=0.5                                              ## [34]
+MIN_SAMP_FREQ_LOCUS_BETWEEN_POP=0.5                                             ## [35]
+WINDOW_SIZE=20                                                                  ## [36] sliding window size (e.g. 20 nt)
+WINDOW_PSITE=5                                                                  ## [37]
