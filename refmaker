@@ -17,9 +17,10 @@ if [ "$1" == "-h" ]; then
     ##cat `dirname $0`/README.txt
 
 echo "Usage: `basename $0` [-h] [-m mode] [-p parameter_file.txt] [-o additional options]
-                        __
-                      /======/  \\
-              ___    //      \___C     CCACAA
+
+                             __
+                     /======/  \\
+              ___   //      \___C     CCACAA
        CCA   | \\\  //              AGCCCACAAATT
      |ACCTC__|__|_//              CGAGCCCACAAATTAC
     _L_____________\o           ATCGAGCCCACAAATTACAC
@@ -44,9 +45,11 @@ set -e
 echo ""
 echo "refmaker-v.1.0"
 echo "start processing"
-echo "                        __
-                      /======/  \\
-              ___    //      \___C     CCACAA
+echo "
+
+                             __
+                     /======/  \\
+              ___   //      \___C     CCACAA
        CCA   | \\\  //              AGCCCACAAATT
      |ACCTC__|__|_//              CGAGCCCACAAATTAC
     _L_____________\o           ATCGAGCCCACAAATTACAC
@@ -54,7 +57,6 @@ ___(OOOOOOOOOOOOOO)_______CATTATCGAGCCCACAAATTACACAA___
 
 
 "
-mkdir -p ${RES}/assembly/samples
 
 if [ $mode == 'demultiplexing' ]; then
   start=$(date +%s)
