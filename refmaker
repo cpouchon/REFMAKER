@@ -30,7 +30,7 @@ REFMAKER: de novo building reference catalog for mapping
            where:
             -m (mode) perform pipeline according to the chosen mode [demultiplexing,assembly,filtering,mapping,calling,consensus]
             -p (parameter_file) set the parameter file
-            -o (options) get some options according to the used mode [samples,catalog,consensus]
+            -o (options) get some options according to the used mode [sample,catalog,consensus]
             "
   exit 0
 fi
@@ -116,7 +116,7 @@ if [ $mode == 'demultiplexing' ]; then
 
 
 
-elif [ $mode == 'assembly' ] && [ $option == 'samples' ]; then
+elif [ $mode == 'assembly' ] && [ $option == 'sample' ]; then
   echo "[INFO]: spades assembly run"
   mkdir -p ${RES}/assembly/spades
   mkdir -p ${RES}/assembly/samples/
@@ -177,6 +177,7 @@ elif [ $mode == 'assembly' ] && [ $option == 'catalog' ]; then
   do
     ${SPADES} --careful --only-assembler -t ${THREADS} -m 120 -k $kval -o ${RES}/metassembly/metassembly_k$kval -s ${RES}/metassembly/tmp.contigs.fa
   done
+  rm ${RES}/metassembly/tmp.contigs.fa
   end=`date +%s`
   runtime=$( echo "$end - $start" | bc -l )
   hours=$((runtime / 3600))
@@ -202,18 +203,18 @@ elif [ $mode == 'filtering' ] && [ $option == 'catalog' ]; then
   echo ""
   echo "[INFO]: step 2. filtering of metacontigs"
   DBPATH=`dirname $0`/resources
-  for seq in ${DBPATH}/rRNA_database/*.fasta;
+  for seq in ${DBPATH}/filtering_database/*.fasta;
   do
     ${BLASTDB} -in $seq -dbtype nucl
   done
   for kval in ${KMER_ARRAY[@]};
   do
      file=${RES}/catalog/unclean_catalog_k$kval.fa
-     for seq in ${DBPATH}/rRNA_database/*.fasta;
+     for seq in ${DBPATH}/filtering_database/*.fasta;
      do
        ${BLASTN} -db $seq -query $file -evalue ${EVALUE} -num_threads ${THREADS} -outfmt 7 -task blastn -best_hit_overhang 0.1 -max_target_seqs 1 -best_hit_score_edge 0.1 | awk -v SIM=${BLAST_SIM} -v LEN=${BLAST_LEN} '!/^#/ {if ($3>=SIM && $4>=LEN) print}' >> ${RES}/catalog/blast_unclean_k$kval.out
      done
-     `dirname $0`/src/FiltContigs.py --blast ${RES}/catalog/blast_unclean_k$kval.out --rank ${EXPECTED_TAXO_RANK} --database ${DBPATH} --taxo ${DBPATH}/rRNA_database_taxonomy.txt --outpath ${RES}/catalog/ > ${RES}/catalog/bad_unclean_k$kval.log
+     `dirname $0`/src/FiltContigs.py --blast ${RES}/catalog/blast_unclean_k$kval.out --database ${DBPATH} --outpath ${RES}/catalog/ > ${RES}/catalog/bad_unclean_k$kval.log
      if [ -s ${RES}/catalog/cpdna_contigs.infos ]; then
         mv ${RES}/catalog/cpdna_contigs.infos ${RES}/catalog/cpdna_contigs_k$kval.infos
         cat ${RES}/catalog/cpdna_contigs_k$kval.infos >> ${RES}/catalog/toremove_k$kval.log
@@ -238,6 +239,14 @@ elif [ $mode == 'filtering' ] && [ $option == 'catalog' ]; then
     else
       :
     fi
+    if [ -s ${RES}/catalog/others_contigs.infos ]; then
+      mv ${RES}/catalog/others_contigs.infos ${RES}/catalog/others_contigs_k$kval.infos
+      cat ${RES}/catalog/others_contigs_k$kval.infos >> ${RES}/catalog/toremove_k$kval.log
+      cat ${RES}/catalog/others_contigs_k$kval.infos >> ${RES}/catalog/metacontigs_others.infos
+      rm ${RES}/catalog/others_contigs_k$kval.infos
+    else
+      :
+    fi
     awk '/^>/ {printf("%s%s\t",(N>0?"\n":""),$0);N++;next;} {printf("%s",$0);} END {printf("\n");}' ${RES}/catalog/unclean_catalog_k$kval.fa | perl -pe 's@>@@' | awk ' NR==FNR {a[$1]=$1;next} {if($1 in a == 0) {print ">"$1"\n"$NF}}' ${RES}/catalog/toremove_k$kval.log - > ${RES}/catalog/tmp_clean_catalog_k$kval.fa
   done
   rm ${RES}/catalog/toremove_*
@@ -249,6 +258,8 @@ elif [ $mode == 'filtering' ] && [ $option == 'catalog' ]; then
   do
      cat ${RES}/catalog/tmp_clean_catalog_k$kval.fa | awk -v NAME="k"${kval} '{if ($0 ~ /^>/) {split($1,a,">"); $0=">"a[2]"_"NAME; print $0} else {print}}'>> ${RES}/catalog/all_clean_metassemblies.fa
   done
+  rm ${RES}/catalog/tmp_clean_catalog_k*.fa
+  rm ${RES}/catalog/unclean_catalog_k*.fa
   file=${RES}/catalog/all_clean_metassemblies.fa
   ${BLASTDB} -in $file -dbtype nucl
   ${BLASTN} -db $file -query $file -evalue ${EVALUE} -num_threads ${THREADS} -outfmt 7 -task blastn >> ${RES}/catalog/blast_refall_refall_cleaned.out
@@ -289,6 +300,7 @@ elif [ $mode == 'mapping' ]; then
     ${SAMTOOLS} coverage -q ${MAPPING_QUAL} -H -o ${RES}/mapping/covs/${sample}_cov.infos ${RES}/mapping/${sample}_sorted_keep_pcrdup.rescaled.bam
     rm ${RES}/mapping/temp*
     rm ${RES}/mapping/marks
+    rm ${RES}/mapping/${sample}_on_ref.sam
   done<${SAMPLES_FILE}
   end=`date +%s`
   runtime=$( echo "$end - $start" | bc -l )
@@ -325,6 +337,7 @@ elif [ $mode == 'calling' ]; then
     ${BCFTOOLS} filter -e "AC>0 & (DP4[2]+DP4[3])<${DP}" --SnpGap 10 ${f} | perl -pe "s/PASS/./g" | ${BCFTOOLS} view -V indels -O z -o ${RES}/calling/filtered/${lib}.bcf -
     ${BCFTOOLS} index ${RES}/calling/filtered/${lib}.bcf
     echo ${lib}": filtering done"
+    rm ${RES}/calling/${lib}.bcf
   done
   echo "[INFO]: done"
   echo ""
@@ -337,6 +350,8 @@ elif [ $mode == 'calling' ]; then
   ${BCFTOOLS} merge -m all ${samples} -o ${RES}/calling/merge_unfiltered.bcf
   ${BCFTOOLS} view -V indels -O z -o ${RES}/calling/merge_filtered.bcf ${RES}/calling/merge_unfiltered.bcf
   ${BCFTOOLS} view ${RES}/calling/merge_filtered.bcf -v snps -Ov -o ${RES}/calling/merge_filtered_snps.vcf
+  rm -rf ${RES}/calling/filtered/
+  rm ${RES}/calling/merge_unfiltered.bcf
   echo "[INFO]: done"
   echo ""
   end=`date +%s`

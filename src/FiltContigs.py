@@ -9,10 +9,7 @@ import os, errno
 parser = argparse.ArgumentParser(description='Identification of contaminant according to taxonomic assignment of contigs into rRNA database. Script was writen by C. Pouchon (2020).')
 parser.add_argument("--blast", help="output from blast of contigs into database",
                     type=str)
-parser.add_argument('--rank', help='expected taxonomic rank', type=str)
 parser.add_argument('--database', help='path to databases', type=str)
-parser.add_argument("--taxo", help="NCBI accessions to taxonomy for rRNA databases IDs",
-                    type=str)
 parser.add_argument('--outpath', help='path to outpout contig infos', type=str)
 
 
@@ -23,8 +20,8 @@ if len(sys.argv)==1:
 args = parser.parse_args()
 
 blastout=args.blast
-expected=args.rank
-NCBI_accessions=args.taxo
+#expected=args.rank
+#NCBI_accessions=args.taxo
 dbpath=args.database
 outpath=args.outpath
 
@@ -33,8 +30,8 @@ contigs_align={}
 contigs_pos={}
 toremove=list()
 cont_to_remove=list()
-accessions={}
-access_dict={}
+#accessions={}
+#access_dict={}
 bitscore_dict={}
 best_hit={}
 
@@ -49,6 +46,7 @@ for r, d, f in path_to_seek:
 rdna=list()
 cpdna=list()
 mtdna=list()
+others=list()
 for f in in_files:
     if any(x in f for x in ("rfam-5s","_nucrdna","euk-28s","rfam-5.8s","euk-18s")):
         with open(f) as ffile:
@@ -74,16 +72,25 @@ for f in in_files:
                     cpdna.append(id)
                 else:
                     pass
+    else:
+        with open(f) as ffile:
+            for l in ffile:
+                if l.startswith(">"):
+                    id=l.rstrip().replace(">","").split(" ")[0]
+                    others.append(id)
+                else:
+                    pass
 
-with open(NCBI_accessions) as acessf:
-    for l in acessf:
-        tab=l.rstrip().split('\t')
-        if 'accession' in tab:
-            pass
-        else:
-            code=tab[0]
-            code_txid=tab[2]
-            access_dict[code]=str(code_txid)
+# we can remove
+#with open(NCBI_accessions) as acessf:
+#    for l in acessf:
+#        tab=l.rstrip().split('\t')
+#        if 'accession' in tab:
+#            pass
+#        else:
+#            code=tab[0]
+#            code_txid=tab[2]
+#            access_dict[code]=str(code_txid)
 
 with open(blastout) as blastf:
     for l in blastf:
@@ -133,11 +140,10 @@ with open(blastout) as blastf:
             contigs_pos[contigid][refid]=[]
             contigs_pos[contigid][refid].append(str(start)+"-"+str(end))
 
-        if refid in list(accessions.keys()):
-            pass
-        else:
-            accessions.setdefault(refid, "NA")
-
+        #if refid in list(accessions.keys()):
+        #    pass
+        #else:
+        #    accessions.setdefault(refid, "NA")
 
 for allcont in contigs.keys():
     for elem in contigs[allcont].keys():
@@ -153,50 +159,87 @@ for allcont in contigs.keys():
             best_hit[allcont]=elem
             bitscore_dict[allcont]=float(score)
 
-for k in accessions.keys():
-    if k in access_dict.keys():
-        tax=access_dict[k]
-        if expected.lower() in tax.lower():
-            accessions[k]="TRUE"
-        else:
-            accessions[k]="FALSE"
+#for k in accessions.keys():
+#    if k in access_dict.keys():
+#        tax=access_dict[k]
+#        if expected.lower() in tax.lower():
+#            accessions[k]="TRUE"
+#        else:
+#            accessions[k]="FALSE"
+
+# for cont in best_hit.keys():
+#     if cont in cont_to_remove:
+#         continue
+#     else:
+#         refcont=best_hit[cont]
+#         if refcont in accessions.keys():
+#             toprint=list()
+#             if accessions[refcont]=="FALSE":
+#                 if cont in cont_to_remove:
+#                     pass
+#                 else:
+#                     toprint.append(cont)
+#                     toprint.append(refcont)
+#                     toprint.append(access_dict[refcont])
+#                     toremove.append(toprint)
+#                     cont_to_remove.append(cont)
+#             else:
+#                 align_cont=contigs_align[cont][refcont]
+#                 cont_size=int(cont.split("length_")[1].split("_")[0])
+#                 if align_cont/cont_size >=0.05:
+#                     if refcont in rdna:
+#                         with open(os.path.join(str(outpath),'rdna_contigs.infos'), 'a+') as out:
+#                             out.write(cont+"\n")
+#                             out.close()
+#                     elif refcont in cpdna:
+#                         with open(os.path.join(str(outpath),'cpdna_contigs.infos'), 'a+') as out:
+#                             out.write(cont+"\n")
+#                             out.close()
+#                     elif refcont in mtdna:
+#                         with open(os.path.join(str(outpath),'mtdna_contigs.infos'), 'a+') as out:
+#                             out.write(cont+"\n")
+#                             out.close()
+#                 else:
+#                     pass
+#         else:
+#             pass
+
 
 for cont in best_hit.keys():
     if cont in cont_to_remove:
         continue
     else:
         refcont=best_hit[cont]
-        if refcont in accessions.keys():
-            toprint=list()
-            if accessions[refcont]=="FALSE":
-                if cont in cont_to_remove:
-                    pass
-                else:
-                    toprint.append(cont)
-                    toprint.append(refcont)
-                    toprint.append(access_dict[refcont])
-                    toremove.append(toprint)
-                    cont_to_remove.append(cont)
-            else:
-                align_cont=contigs_align[cont][refcont]
-                cont_size=int(cont.split("length_")[1].split("_")[0])
-                if align_cont/cont_size >=0.05:
-                    if refcont in rdna:
-                        with open(os.path.join(str(outpath),'rdna_contigs.infos'), 'a+') as out:
-                            out.write(cont+"\n")
-                            out.close()
-                    elif refcont in cpdna:
-                        with open(os.path.join(str(outpath),'cpdna_contigs.infos'), 'a+') as out:
-                            out.write(cont+"\n")
-                            out.close()
-                    elif refcont in mtdna:
-                        with open(os.path.join(str(outpath),'mtdna_contigs.infos'), 'a+') as out:
-                            out.write(cont+"\n")
-                            out.close()
-                else:
-                    pass
-        else:
+        toprint=list()
+        if cont in cont_to_remove:
             pass
+        else:
+            toprint.append(cont)
+            toprint.append(refcont)
+            #toprint.append(access_dict[refcont])
+            toremove.append(toprint)
+            cont_to_remove.append(cont)
+            align_cont=contigs_align[cont][refcont]
+            cont_size=int(cont.split("length_")[1].split("_")[0])
+            if align_cont/cont_size >=0.05:
+                if refcont in rdna:
+                    with open(os.path.join(str(outpath),'rdna_contigs.infos'), 'a+') as out:
+                        out.write(cont+"\n")
+                        out.close()
+                elif refcont in cpdna:
+                    with open(os.path.join(str(outpath),'cpdna_contigs.infos'), 'a+') as out:
+                        out.write(cont+"\n")
+                        out.close()
+                elif refcont in mtdna:
+                    with open(os.path.join(str(outpath),'mtdna_contigs.infos'), 'a+') as out:
+                        out.write(cont+"\n")
+                        out.close()
+                elif refcont in others:
+                    with open(os.path.join(str(outpath),'others_contigs.infos'), 'a+') as out:
+                        out.write(cont+"\n")
+                        out.close()
+            else:
+                pass
 
 if len(toremove)>0:
     for l in toremove:
