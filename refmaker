@@ -420,3 +420,6 @@ elif [ $mode == 'filtering' ] && [ $option == 'consensus' ]; then
   echo "STATUS: done"
   echo ""
   exit 0
+
+fi
+exit 0

@@ -20,8 +20,6 @@ if len(sys.argv)==1:
 args = parser.parse_args()
 
 blastout=args.blast
-#expected=args.rank
-#NCBI_accessions=args.taxo
 dbpath=args.database
 outpath=args.outpath
 
@@ -30,8 +28,6 @@ contigs_align={}
 contigs_pos={}
 toremove=list()
 cont_to_remove=list()
-#accessions={}
-#access_dict={}
 bitscore_dict={}
 best_hit={}
 
@@ -41,7 +37,6 @@ for r, d, f in path_to_seek:
     for file in f:
         if file.endswith(".fasta"):
             in_files.append(os.path.join(r, file))
-
 
 rdna=list()
 cpdna=list()
@@ -81,17 +76,6 @@ for f in in_files:
                 else:
                     pass
 
-# we can remove
-#with open(NCBI_accessions) as acessf:
-#    for l in acessf:
-#        tab=l.rstrip().split('\t')
-#        if 'accession' in tab:
-#            pass
-#        else:
-#            code=tab[0]
-#            code_txid=tab[2]
-#            access_dict[code]=str(code_txid)
-
 with open(blastout) as blastf:
     for l in blastf:
         contigid=l.rstrip().split("\t")[0]
@@ -100,7 +84,6 @@ with open(blastout) as blastf:
         start=int(l.rstrip().split("\t")[6])
         end=int(l.rstrip().split("\t")[7])
         refid=l.rstrip().split("\t")[1]
-        #print(contigid,refid,start,end)
         if contigid in list(contigs.keys()):
             if refid in list(contigs[contigid].keys()):
                 tmp=contigs_pos[contigid][refid]
@@ -108,7 +91,6 @@ with open(blastout) as blastf:
                 for p in contigs_pos[contigid][refid]:
                     min=int(p.split("-")[0])
                     max=int(p.split("-")[1])
-                    #print(min,max)
                     rhit=set(range(min,max))
                     rc=set(range(start,end))
                     intersection=rhit.intersection(rc)
@@ -131,7 +113,6 @@ with open(blastout) as blastf:
                 contigs_pos[contigid][refid]=[]
                 contigs_pos[contigid][refid].append(str(start)+"-"+str(end))
         else:
-            #print(contigid, refid)
             contigs.setdefault(contigid, {})
             contigs_align.setdefault(contigid, {})
             contigs_pos.setdefault(contigid, {})
@@ -139,11 +120,6 @@ with open(blastout) as blastf:
             contigs_align[contigid][refid]=aln
             contigs_pos[contigid][refid]=[]
             contigs_pos[contigid][refid].append(str(start)+"-"+str(end))
-
-        #if refid in list(accessions.keys()):
-        #    pass
-        #else:
-        #    accessions.setdefault(refid, "NA")
 
 for allcont in contigs.keys():
     for elem in contigs[allcont].keys():
@@ -159,52 +135,6 @@ for allcont in contigs.keys():
             best_hit[allcont]=elem
             bitscore_dict[allcont]=float(score)
 
-#for k in accessions.keys():
-#    if k in access_dict.keys():
-#        tax=access_dict[k]
-#        if expected.lower() in tax.lower():
-#            accessions[k]="TRUE"
-#        else:
-#            accessions[k]="FALSE"
-
-# for cont in best_hit.keys():
-#     if cont in cont_to_remove:
-#         continue
-#     else:
-#         refcont=best_hit[cont]
-#         if refcont in accessions.keys():
-#             toprint=list()
-#             if accessions[refcont]=="FALSE":
-#                 if cont in cont_to_remove:
-#                     pass
-#                 else:
-#                     toprint.append(cont)
-#                     toprint.append(refcont)
-#                     toprint.append(access_dict[refcont])
-#                     toremove.append(toprint)
-#                     cont_to_remove.append(cont)
-#             else:
-#                 align_cont=contigs_align[cont][refcont]
-#                 cont_size=int(cont.split("length_")[1].split("_")[0])
-#                 if align_cont/cont_size >=0.05:
-#                     if refcont in rdna:
-#                         with open(os.path.join(str(outpath),'rdna_contigs.infos'), 'a+') as out:
-#                             out.write(cont+"\n")
-#                             out.close()
-#                     elif refcont in cpdna:
-#                         with open(os.path.join(str(outpath),'cpdna_contigs.infos'), 'a+') as out:
-#                             out.write(cont+"\n")
-#                             out.close()
-#                     elif refcont in mtdna:
-#                         with open(os.path.join(str(outpath),'mtdna_contigs.infos'), 'a+') as out:
-#                             out.write(cont+"\n")
-#                             out.close()
-#                 else:
-#                     pass
-#         else:
-#             pass
-
-
 for cont in best_hit.keys():
     if cont in cont_to_remove:
         continue
@@ -216,12 +146,11 @@ for cont in best_hit.keys():
         else:
             toprint.append(cont)
             toprint.append(refcont)
-            #toprint.append(access_dict[refcont])
             toremove.append(toprint)
             cont_to_remove.append(cont)
             align_cont=contigs_align[cont][refcont]
             cont_size=int(cont.split("length_")[1].split("_")[0])
-            if align_cont/cont_size >=0.05:
+            if align_cont/cont_size >=0.0:
                 if refcont in rdna:
                     with open(os.path.join(str(outpath),'rdna_contigs.infos'), 'a+') as out:
                         out.write(cont+"\n")

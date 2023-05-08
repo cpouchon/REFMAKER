@@ -254,6 +254,8 @@ for file in in_files:
     refseq=str(seqs[geneID].seq)
     lenseq=len(refseq)
     ref_len[geneID]=lenseq
+    bad_sites=list()
+    bad_samp=list()
     if lenseq<mlen:
         bad_loci_len.append(geneID)
         for samp in sampling:
