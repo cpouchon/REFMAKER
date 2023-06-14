@@ -407,8 +407,8 @@ elif [ $mode == 'consensus' ]; then
 elif [ $mode == 'filtering' ] && [ $option == 'consensus' ]; then
   echo "[INFO]: consensus filtering"
   start=$(date +%s)
-  `dirname $0`src/consfilter1.py -d ${RES}/mapping/covs/ --df ${MAX_SAMP_EXCESS_DEPTH_FREQ} -f ${RES}/trimming/ --ht ${MAX_HETERO_BASES_FREQ} --Ht ${MAX_HETERO_SAMP_FREQ} -l ${MIN_LOCUS_LEN} -M ${MAX_MISSING_SAMPLE_FREQ} -m ${MAX_MISSING_LOCUS_FREQ} -m_out ${MAX_MISSING_LOCUS_FREQ_OUTGROUP} -M_out ${MAX_MISSING_SAMPLE_FREQ_OUTGROUP} -o ${RES}/output -p ${POPULATION_FILE} --remove loci -r ${MIN_SAMP_FREQ_LOCUS_WITHIN_POP} -R ${MIN_SAMP_FREQ_LOCUS_BETWEEN_POP} --window_size ${WINDOW_SIZE} --window_psites ${WINDOW_PSITE}
-  `dirname $0`src/GeneStat.py -i ${RES}/output -o ${RES}/output
+  `dirname $0`/src/consfilter1.py -d ${RES}/mapping/covs/ --df ${MAX_SAMP_EXCESS_DEPTH_FREQ} -f ${RES}/trimming/ --ht ${MAX_HETERO_BASES_FREQ} --Ht ${MAX_HETERO_SAMP_FREQ} -l ${MIN_LOCUS_LEN} -M ${MAX_MISSING_SAMPLE_FREQ} -m ${MAX_MISSING_LOCUS_FREQ} -m_out ${MAX_MISSING_LOCUS_FREQ_OUTGROUP} -M_out ${MAX_MISSING_SAMPLE_FREQ_OUTGROUP} -o ${RES}/output -p ${POPULATION_FILE} --remove loci -r ${MIN_SAMP_FREQ_LOCUS_WITHIN_POP} -R ${MIN_SAMP_FREQ_LOCUS_BETWEEN_POP} --window_size ${WINDOW_SIZE} --window_psites ${WINDOW_PSITE}
+  `dirname $0`/src/GeneStat.py -i ${RES}/output -o ${RES}/output
   echo "[INFO]: done"
   echo ""
   end=`date +%s`
