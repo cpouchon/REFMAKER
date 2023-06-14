@@ -1,5 +1,9 @@
 # REFMAKER: create your own reference to target nuclear sequences in shotgun libraries
 
+
+<br/> **Citation:** Pouchon, C., Boluda, C.G. (2023) REFMAKER: Make your own reference to target nuclear loci in low coverage genome skimming libraries. Phylogenomic application in Sapotaceae. *Molecular Phylogenetics and Evolution*, 186, 107826.  *https://doi.org/10.1016/j.ympev.2023.107826.*</b>
+
+
 REFMAKER is a command-line and user-friendly pipeline providing different tools to create nuclear references from genomic assemblies of shotgun libraries.
 
 It needs to be run from a terminal/console, by calling different tasks, called 'modes', along with another parameter corresponding to specific 'options' (see Figure 1). It can be parameterized in order to:
@@ -18,10 +22,6 @@ It needs to be run from a terminal/console, by calling different tasks, called '
 
  ![Fig.1. REFMAKER worflow](./resources/img/Refmaker_workflow.png)
  >**Fig. 1. REFMAKER workflow**.
-
-
- **Citation:**
- <br/>Pouchon, C., Boluda, C.G. REFMAKER: make your own reference to target nuclear loci in low coverage genome skimming libraries. Phylogenomic application in Sapotaceae. *in prep.*</b>
 
 
  ## Table of contents
