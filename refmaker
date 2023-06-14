@@ -349,7 +349,7 @@ elif [ $mode == 'calling' ]; then
   done
   ${BCFTOOLS} merge -m all ${samples} -o ${RES}/calling/merge_unfiltered.bcf
   ${BCFTOOLS} view -V indels -O z -o ${RES}/calling/merge_filtered.bcf ${RES}/calling/merge_unfiltered.bcf
-  ${BCFTOOLS} view ${RES}/calling/merge_filtered.bcf -v snps -Ov -o ${RES}/calling/merge_filtered_snps.vcf
+  ${BCFTOOLS} view ${RES}/calling/merge_filtered.bcf -v snps -Ov -o ${RES}/calling/merge_filtered_snp.vcf
   rm -rf ${RES}/calling/filtered/
   rm ${RES}/calling/merge_unfiltered.bcf
   echo "[INFO]: done"
