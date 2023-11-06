@@ -41,3 +41,4 @@ MIN_SAMP_FREQ_LOCUS_WITHIN_POP=0.5                                              
 MIN_SAMP_FREQ_LOCUS_BETWEEN_POP=0.5                                             ## [34] minimal frequency of population sharing loci. Loci kept within populations are discarded in the final matrix below this threshold.
 WINDOW_SIZE=20                                                                  ## [35] sliding window size for errors detection in the alignment (e.g. 20 nt).
 WINDOW_PSITE=5                                                                  ## [36] maximal polymorphic sites allowed within the sliding window for errors detection (e.g. 5 nt).
+MIN_INFO_SITE_FREQ=0.02                                                         ## [37] minimal frequency of informative sites by locus

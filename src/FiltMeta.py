@@ -293,6 +293,7 @@ print("1) selection of the best inflation value giving the highest modularity sc
 infval=[i / 10 for i in range(11, 36)]
 bestQ=0
 bestV=0
+condinit=0
 Bar = ProgressBar(len(infval), 60, '\t ')
 barp=0
 for inflation in infval:
@@ -302,11 +303,16 @@ for inflation in infval:
     Q = mc.modularity(matrix=result, clusters=clusters)
     #print("inflation:", inflation, "modularity:", Q)
     Bar.update(barp)
-    if Q >= bestQ:
+    if condinit==0:
         bestQ=Q
         bestV=inflation
+        condinit+=1
     else:
-        continue
+        if Q >= bestQ:
+            bestQ=Q
+            bestV=inflation
+        else:
+            continue
 print("done")
 
 print("2) finding clusters using the optimized cluster inflation value")
