@@ -45,11 +45,18 @@ It needs to be run from a terminal/console, by calling different tasks, called '
 
  REFMAKER is packaged with all required dependencies in a [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) environment, which has to be installed (see https://conda.io/projects/conda/en/latest/user-guide/install/index.html).
 
- This package is create with the *refmaker-env.yml* file provided:
+ This package is created within the following conda environment:
 
  ```
- user$: cd ./REFMAKER-master/
- user$: conda env create --prefix /your_path_to_install/refmaker-env --file env/refmaker-env.yml
+ user$: conda config --add channels defaults
+ user$: conda config --add channels bioconda
+ user$: conda config --add channels conda-forge
+ ```
+ ```
+ user$: conda  create --name /your_path_to_install/refmaker-env
+ conda activate /your_path_to_install/refmaker-env
+ conda install python picard">=2.27" bwa markov_clustering scipy matplotlib networkx spades blast mafft trimal numpy joblib bwa cd-hit ete3 biopython samtools">=1.13" bcftools">=1.13" -y
+ user$: conda deactivate
  ```
 
  Such package has then to be activated/deactivated when running REFMAKER:
