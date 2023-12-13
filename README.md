@@ -39,8 +39,8 @@ It needs to be run from a terminal/console, by calling different tasks, called '
  REFMAKER is tested on Unix environment and downloaded from the source code:
 
  ```
- user$: wget https://github.com/cpouchon/REFMAKER/archive/master.zip
- user$: unzip master.zip
+ user$: wget https://github.com/cpouchon/REFMAKER/archive/refs/tags/v.0.0.zip
+ user$: unzip v.0.0.zip
  ```
 
  REFMAKER is packaged with all required dependencies in a [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) environment, which has to be installed (see https://conda.io/projects/conda/en/latest/user-guide/install/index.html).
@@ -63,7 +63,7 @@ It needs to be run from a terminal/console, by calling different tasks, called '
 
  ```
  user$: conda activate /your_path_to_install/refmaker-env
- user$: (refmaker-env) ./REFMAKER-master/refmaker
+ user$: (refmaker-env) ./REFMAKER-v.0.0/refmaker
  user$: conda deactivate
  ```
 
@@ -84,7 +84,7 @@ user$: nano config_orthoskim.txt
 ```
 #REFMAKER (v.1.0) parameter file
 #------ global parameters ------------------------------------------------------
-TOOLS=~/REFMAKER-master/tools.sh                                                ## [1] path to file with dependencies
+TOOLS=~/REFMAKER-v.0.0/tools.sh                                                ## [1] path to file with dependencies
 RES=~/res_refmaker                                                              ## [2] output directory
 THREADS=15                                                                      ## [3] number of threads to use for multithreading steps
 #------ demultiplexing ---------------------------------------------------------
