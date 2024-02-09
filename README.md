@@ -51,11 +51,12 @@ It needs to be run from a terminal/console, by calling different tasks, called '
  user$: conda config --add channels defaults
  user$: conda config --add channels bioconda
  user$: conda config --add channels conda-forge
+ user$: conda config --set channel_priority strict
  ```
  ```
  user$: conda create -p /your_path_to_install/refmaker-env
  conda activate /your_path_to_install/refmaker-env
- conda install python samtools">=1.13" bcftools">=1.13" picard spades blast mafft trimal bwa cd-hit -y
+ conda install python samtools">=1.19" bcftools">=1.19" picard spades blast mafft trimal bwa cd-hit -y
  conda install networkx numpy joblib markov_clustering scipy matplotlib ete3 biopython -y
  user$: conda deactivate
  ```
@@ -67,6 +68,8 @@ It needs to be run from a terminal/console, by calling different tasks, called '
  user$: (refmaker-env) ./REFMAKER-v.0.0/refmaker
  user$: conda deactivate
  ```
+
+**Note:** Please to check the correct installation of *bcftools* with conda. If you are unable to run it, bcftools can be easy compile from source: http://www.htslib.org/download/.
 
 
  ## 2. Input files

@@ -284,8 +284,8 @@ elif [ $mode == 'mapping' ]; then
   REF=${RES}/catalog/clean_catalog.fa
   ${SAMTOOLS} faidx ${REF}
   ${BWA} index ${REF}
-  PICARDVERSION=$(${PICARD} AddOrReplaceReadGroups --version |& awk 'END{split($1,a,".");print a[2]}')
-  if [[ $PICARDVERSION -ge 27 ]]; then
+  PICARDVERSION=$(${PICARD} AddOrReplaceReadGroups --version |& awk 'END{split($1,a,".");print a[1]a[2]}')
+  if [[ $PICARDVERSION -ge 227 ]]; then
     ${PICARD} CreateSequenceDictionary -R ${REF} -O ${RES}/catalog/clean_catalog.dict
   else
     ${PICARD} CreateSequenceDictionary R=${REF} O=${RES}/catalog/clean_catalog.dict
@@ -299,8 +299,8 @@ elif [ $mode == 'mapping' ]; then
     ${BWA} mem -t ${THREADS} -M -S ${REF} ${r1} ${r2} > ${RES}/mapping/${sample}_on_ref.sam
     ${SAMTOOLS} sort ${RES}/mapping/${sample}_on_ref.sam -o ${RES}/mapping/temp_1_sorted.bam
     ${SAMTOOLS} view -bF 4 -q ${MAPPING_QUAL} ${RES}/mapping/temp_1_sorted.bam > ${RES}/mapping/temp_1_sorted_keep.bam
-    PICARDVERSION=$(${PICARD} AddOrReplaceReadGroups --version |& awk 'END{split($1,a,".");print a[2]}')
-    if [[ $PICARDVERSION -ge 27 ]]; then
+    PICARDVERSION=$(${PICARD} AddOrReplaceReadGroups --version |& awk 'END{split($1,a,".");print a[1]a[2]}')
+    if [[ $PICARDVERSION -ge 227 ]]; then
       ${PICARD} AddOrReplaceReadGroups -I ${RES}/mapping/temp_1_sorted_keep.bam -O ${RES}/mapping/temp_1_sorted_keep_rg.bam -ID ${sample} -LB id -PL pl -PU pu -SM ${sample}
       ${PICARD} MarkDuplicates -I ${RES}/mapping/temp_1_sorted_keep_rg.bam -O ${RES}/mapping/temp_1_sorted_keep_pcrdup.bam -M ${RES}/mapping/marks --REMOVE_DUPLICATES true
     else
@@ -381,7 +381,12 @@ elif [ $mode == 'consensus' ]; then
   echo "[INFO]: step 1. consensus"
   mkdir ${RES}/consense
   REF=${RES}/catalog/clean_catalog.fa
-  ${BCFTOOLS} convert ${RES}/calling/merge_filtered_snp.vcf -Obz -o ${RES}/calling/merge_filtered_snp.bcf --threads ${THREADS}
+  BCFVERSION=BCFVERSION=$(${BCFTOOLS} --version | awk 'NR==1 {split($2,a,"."); print a[1]a[2]}')
+  if [[ $BCFVERSION -ge 114 ]]; then
+    ${BCFTOOLS} convert ${RES}/calling/merge_filtered_snp.vcf -Ob9 -o ${RES}/calling/merge_filtered_snp.bcf --threads ${THREADS}
+  else
+    ${BCFTOOLS} convert ${RES}/calling/merge_filtered_snp.vcf -Obz -o ${RES}/calling/merge_filtered_snp.bcf --threads ${THREADS}
+  fi
   ${BCFTOOLS} index ${RES}/calling/merge_filtered.bcf
   for taxa in `${BCFTOOLS} query -l ${RES}/calling/merge_filtered.bcf`;
   do
