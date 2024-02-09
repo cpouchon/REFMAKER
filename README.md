@@ -39,8 +39,8 @@ It needs to be run from a terminal/console, by calling different tasks, called '
  REFMAKER is tested on Unix environment and downloaded from the source code:
 
  ```
- user$: wget https://github.com/cpouchon/REFMAKER/archive/refs/tags/v.0.0.zip
- user$: unzip v.0.0.zip
+ user$: wget https://github.com/cpouchon/REFMAKER/archive/refs/tags/v.1.0.zip
+ user$: unzip v.1.0.zip
  ```
 
  REFMAKER is packaged with all required dependencies in a [conda](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) environment, which has to be installed (see https://conda.io/projects/conda/en/latest/user-guide/install/index.html).
