@@ -284,7 +284,12 @@ elif [ $mode == 'mapping' ]; then
   REF=${RES}/catalog/clean_catalog.fa
   ${SAMTOOLS} faidx ${REF}
   ${BWA} index ${REF}
-  ${PICARD} CreateSequenceDictionary -R ${REF} -O ${RES}/catalog/clean_catalog.dict
+  PICARDVERSION=$(${PICARD} AddOrReplaceReadGroups --version |& awk 'END{split($1,a,".");print a[2]}')
+  if [[ $PICARDVERSION -ge 27 ]]; then
+    ${PICARD} CreateSequenceDictionary -R ${REF} -O ${RES}/catalog/clean_catalog.dict
+  else
+    ${PICARD} CreateSequenceDictionary R=${REF} O=${RES}/catalog/clean_catalog.dict
+  fi
   mkdir -p ${RES}/mapping/covs
   while read f;
   do
