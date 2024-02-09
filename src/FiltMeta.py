@@ -8,6 +8,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import markov_clustering as mc
 import random
+from scipy.sparse import csr_matrix, isspmatrix, issparse
 from Bio import SeqIO
 
 
@@ -244,52 +245,14 @@ try:
     matrix = nx.to_scipy_sparse_array(G)
 except:
     matrix = nx.to_scipy_sparse_matrix(G)
-
-#nx.draw_networkx(G, with_labels = True, node_color ='green')
-#nx.draw_networkx(Gr, with_labels = True, node_color ='green')
-#options = {'node_color': 'green','node_size': 100,'width': 1}
-#nx.draw_networkx(Gr, **options)
-#nx.draw_networkx(Gr, with_labels = True, node_color ='green',font_size=6)
-#plt.show()
-#
-# subgr=list(nx.connected_components(Gr))
-# for s in subgr:
-#     rep_node=list() #mettre les sequences rep
-#     tmp_subedges=list()
-#     # cond if just one contig --> rep_node
-#     for cont in s:
-#         tmp_subedges=tmp_subedges+[x for x in connect_edges if cont in x]
-#     subedges=list(set(tmp_subedges))
-#     s_graph=nx.Graph()
-#     s_graph.add_edges_from(subedges)
-#     # mettre cond if just 2 --> select one
-#     for cont in s:
-#         tmp_graph=s_graph
-#         tmp_graph.remove_node(cont)
-#         tmp_ssub=list(nx.connected_components(tmp_graph))
-#         if len(tmp_ssub)<2:
-#             # here not disconnected
-#             continue
-#         else: #if disconnected
-#             for sc in tmp_ssub:
-#                 if len(sc)>2:
-#
-#                 # cond if len==2:
-#                 # 1 representant
-#             # else:
-#             # do again for each
-
-
-
+#matrix_numpy=matrix.toarray()
+if isspmatrix(matrix):
+    matrix2=matrix
+else:
+    matrix2=csr_matrix(matrix)
 
 print("Clustering using MCL algorithm")
 print("1) selection of the best inflation value giving the highest modularity score")
-#matrix = nx.to_scipy_sparse_matrix(G)
-#result = mc.run_mcl(matrix)           # run MCL with default parameters
-#clusters = mc.get_clusters(result)    # get clusters
-
-# perform clustering using different inflation values from 1.5 and 2.5
-# for each clustering run, calculate the modularity
 infval=[i / 10 for i in range(11, 36)]
 bestQ=0
 bestV=0
@@ -298,7 +261,7 @@ Bar = ProgressBar(len(infval), 60, '\t ')
 barp=0
 for inflation in infval:
     barp=barp+1
-    result = mc.run_mcl(matrix, inflation=inflation)
+    result = mc.run_mcl(matrix2, inflation=inflation)
     clusters = mc.get_clusters(result)
     Q = mc.modularity(matrix=result, clusters=clusters)
     #print("inflation:", inflation, "modularity:", Q)
@@ -316,7 +279,7 @@ for inflation in infval:
 print("done")
 
 print("2) finding clusters using the optimized cluster inflation value")
-result = mc.run_mcl(matrix, inflation=bestV)
+result = mc.run_mcl(matrix2, inflation=bestV)
 clusters = mc.get_clusters(result)
 print("done")
 #plot of clusters

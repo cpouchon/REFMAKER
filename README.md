@@ -53,9 +53,10 @@ It needs to be run from a terminal/console, by calling different tasks, called '
  user$: conda config --add channels conda-forge
  ```
  ```
- user$: conda  create --name /your_path_to_install/refmaker-env
+ user$: conda create -p /your_path_to_install/refmaker-env
  conda activate /your_path_to_install/refmaker-env
- conda install python picard">=2.27" bwa markov_clustering scipy matplotlib networkx spades blast mafft trimal numpy joblib bwa cd-hit ete3 biopython samtools">=1.13" bcftools">=1.13" -y
+ conda install python samtools">=1.13" bcftools">=1.13" picard spades blast mafft trimal bwa cd-hit -y
+ conda install networkx numpy joblib markov_clustering scipy matplotlib ete3 biopython -y
  user$: conda deactivate
  ```
 

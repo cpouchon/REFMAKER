@@ -294,8 +294,14 @@ elif [ $mode == 'mapping' ]; then
     ${BWA} mem -t ${THREADS} -M -S ${REF} ${r1} ${r2} > ${RES}/mapping/${sample}_on_ref.sam
     ${SAMTOOLS} sort ${RES}/mapping/${sample}_on_ref.sam -o ${RES}/mapping/temp_1_sorted.bam
     ${SAMTOOLS} view -bF 4 -q ${MAPPING_QUAL} ${RES}/mapping/temp_1_sorted.bam > ${RES}/mapping/temp_1_sorted_keep.bam
-    ${PICARD} AddOrReplaceReadGroups -I ${RES}/mapping/temp_1_sorted_keep.bam -O ${RES}/mapping/temp_1_sorted_keep_rg.bam -ID ${sample} -LB id -PL pl -PU pu -SM ${sample}
-    ${PICARD} MarkDuplicates -I ${RES}/mapping/temp_1_sorted_keep_rg.bam -O ${RES}/mapping/temp_1_sorted_keep_pcrdup.bam -M ${RES}/mapping/marks --REMOVE_DUPLICATES true
+    PICARDVERSION=$(${PICARD} AddOrReplaceReadGroups --version |& awk 'END{split($1,a,".");print a[2]}')
+    if [[ $PICARDVERSION -ge 27 ]]; then
+      ${PICARD} AddOrReplaceReadGroups -I ${RES}/mapping/temp_1_sorted_keep.bam -O ${RES}/mapping/temp_1_sorted_keep_rg.bam -ID ${sample} -LB id -PL pl -PU pu -SM ${sample}
+      ${PICARD} MarkDuplicates -I ${RES}/mapping/temp_1_sorted_keep_rg.bam -O ${RES}/mapping/temp_1_sorted_keep_pcrdup.bam -M ${RES}/mapping/marks --REMOVE_DUPLICATES true
+    else
+      ${PICARD} AddOrReplaceReadGroups I=${RES}/mapping/temp_1_sorted_keep.bam O=${RES}/mapping/temp_1_sorted_keep_rg.bam ID=${sample} LB=id PL=pl PU=pu SM=${sample}
+      ${PICARD} MarkDuplicates I=${RES}/mapping/temp_1_sorted_keep_rg.bam O=${RES}/mapping/temp_1_sorted_keep_pcrdup.bam M=${RES}/mapping/marks REMOVE_DUPLICATES=true
+    fi
     cp ${RES}/mapping/temp_1_sorted_keep_pcrdup.bam ${RES}/mapping/${sample}_sorted_keep_pcrdup.rescaled.bam
     ${SAMTOOLS} coverage -q ${MAPPING_QUAL} -H -o ${RES}/mapping/covs/${sample}_cov.infos ${RES}/mapping/${sample}_sorted_keep_pcrdup.rescaled.bam
     rm ${RES}/mapping/temp*
