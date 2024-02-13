@@ -170,7 +170,7 @@ elif [ $mode == 'assembly' ] && [ $option == 'catalog' ]; then
   while read f;
   do
     samplename=`echo ${f} | awk '{print $1}'`
-    cat ${RES}/assembly/samples/${samplename}.fa | awk -v NAME=${samplename} '{if ($0 ~ /^>/) {split($1,a,">"); $0=">"NAME"_"a[2]; print $0} else {print}}' >> ${RES}/metassembly/tmp.contigs.fa
+    cat ${RES}/assembly/samples/${samplename}.fa >> ${RES}/metassembly/tmp.contigs.fa
   done<${SAMPLES_FILE}
 
   for kval in ${KMER_ARRAY[@]};
